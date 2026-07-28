@@ -202,7 +202,8 @@
   }
 
   .table-scroll{ overflow-x:auto; }
-  table{ width:100%; border-collapse:collapse; min-width:1260px; }
+  table{ width:100%; border-collapse:collapse; min-width:1100px; }
+  .stat-col{ padding-left:6px; padding-right:6px; text-align:right; }
   thead th{
     text-align:left;
     font-size:10.5px;
@@ -274,7 +275,7 @@
   }
   .cutline-label{
     position:absolute;
-    right:12px;
+    left:14px;
     top:-9px;
     background:rgba(255,209,102,0.12);
     color:var(--amber);
@@ -427,8 +428,8 @@
           <th colspan="4" class="proj-group">Playoff Projections (Monte Carlo)</th>
         </tr>
         <tr>
-          <th class="team-col">Team</th><th>GP</th><th>W</th><th>OTW</th><th>L</th><th>OTL</th><th>PTS</th>
-          <th>P%</th><th>ROW</th><th>GF</th><th>GA</th><th>DIFF</th>
+          <th class="team-col">Team</th><th class="stat-col">GP</th><th class="stat-col">W</th><th class="stat-col">OTW</th><th class="stat-col">L</th><th class="stat-col">OTL</th><th class="stat-col">PTS</th>
+          <th class="stat-col">P%</th><th class="stat-col">ROW</th><th class="stat-col">GF</th><th class="stat-col">GA</th><th class="stat-col">DIFF</th>
           <th class="pct-cell proj-col">Playoff %</th><th class="pct-cell">1st Seed %</th>
           <th id="seedOddsHeader">Seed Odds</th><th>Avg Final Pts</th>
         </tr>
@@ -765,17 +766,17 @@ function render(){
           </div>
         </div>
       </td>
-      <td class="mono">${t.gp}</td>
-      <td class="mono">${t.w}</td>
-      <td class="mono">${t.otw}</td>
-      <td class="mono">${t.l}</td>
-      <td class="mono">${t.otl}</td>
-      <td class="mono" style="font-weight:700">${t.points}</td>
-      <td class="mono">${pPct}</td>
-      <td class="mono">${rowStat}</td>
-      <td class="mono">${t.gf}</td>
-      <td class="mono">${t.ga}</td>
-      <td class="mono">${diffStr}</td>
+      <td class="mono stat-col">${t.gp}</td>
+      <td class="mono stat-col">${t.w}</td>
+      <td class="mono stat-col">${t.otw}</td>
+      <td class="mono stat-col">${t.l}</td>
+      <td class="mono stat-col">${t.otl}</td>
+      <td class="mono stat-col" style="font-weight:700">${t.points}</td>
+      <td class="mono stat-col">${pPct}</td>
+      <td class="mono stat-col">${rowStat}</td>
+      <td class="mono stat-col">${t.gf}</td>
+      <td class="mono stat-col">${t.ga}</td>
+      <td class="mono stat-col">${diffStr}</td>
       <td class="pct-cell proj-col">
         <div class="pct-label" style="color:${pctColor(playoffPct)}">${(playoffPct*100).toFixed(1)}%</div>
         <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${(playoffPct*100).toFixed(1)}%;background:${pctColor(playoffPct)}"></div></div>
