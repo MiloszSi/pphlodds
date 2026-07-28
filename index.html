@@ -409,11 +409,6 @@
   </div>
 
   <div class="controls">
-    <select id="simCount">
-      <option value="5000">5,000 sims (fast)</option>
-      <option value="20000" selected>20,000 sims</option>
-      <option value="50000">50,000 sims (precise)</option>
-    </select>
     <button class="btn btn-primary" id="runBtn">▶ Run Simulation</button>
     <button class="btn btn-ghost" id="resetBtn">Reset What-If</button>
     <span class="run-status" id="runStatus"></span>
@@ -528,6 +523,7 @@ function ratings(lg){
 }
 
 const K = 0.6;
+const SIM_COUNT = 20000; // 20k is plenty stable; a user-facing precision toggle wasn't changing results meaningfully
 function winProbHome(RATE, home, away){
   // No home-ice adjustment - rating differential only.
   const diff = (RATE[home]-RATE[away]);
@@ -577,7 +573,7 @@ function runSimulation(){
   const lg = league();
   const ov = overrides();
   const RATE = ratings(lg);
-  const N = parseInt(document.getElementById('simCount').value, 10);
+  const N = SIM_COUNT;
   const t0 = performance.now();
   const T = lg.totalTeams;
 
