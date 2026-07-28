@@ -1,0 +1,959 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PPHL — Playoff Odds</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  /* Token values match poncepuck.net's own CSS custom properties (--bg, --card, --accent, etc.)
+     so this page can drop into the site's /pphl/ section without looking bolted-on. */
+  :root{
+    --bg: #03060D;
+    --bg-grad: #0B1220;
+    --surface: #0B101F;
+    --surface-2: #0F1828;
+    --surface-hover: #142138;
+    --line: #1B2741;
+    --line-2: #2A385C;
+    --text: #EAF0FF;
+    --text-dim: #A9B3C7;
+    --text-faint: #6B7690;
+    --amber: #FFD166;
+    --amber-dim: #6B5A2E;
+    --amber-light: #FFE38F;
+    --teal: #3BA9FF;
+    --teal-light: #89D0FF;
+    --green: #30D158;
+    --red: #FF5F57;
+    --violet: #A78BFA;
+    --shadow: none;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    /* identical layered background to poncepuck.net: top-left radial glow +
+       conic wash over the flat base color */
+    background:
+      radial-gradient(1200px 800px at 10% 10%, rgb(20,34,60), rgba(0,0,0,0) 60%),
+      conic-gradient(from 230deg at 70% 20%, rgb(12,24,48), rgb(11,18,32) 25%, rgb(11,18,32) 75%, rgb(12,24,48)),
+      var(--bg);
+    background-attachment:fixed;
+    color:var(--text);
+    font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,Arial,sans-serif;
+    min-height:100vh;
+    padding:0 0 80px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;padding:0 20px;}
+
+  /* ---------- SITE HEADER (matches poncepuck.net's sticky nav chrome) ---------- */
+  .site-header{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(rgba(10,16,30,.95), rgba(10,16,30,.8));
+    -webkit-backdrop-filter:blur(6px) saturate(1.15);
+    backdrop-filter:blur(6px) saturate(1.15);
+    border-bottom:1px solid rgba(35,48,82,.65);
+    box-shadow:0 10px 30px rgba(0,0,0,.45);
+    margin-bottom:32px;
+  }
+  .site-header-inner{
+    max-width:1180px; margin:0 auto; padding:14px 20px;
+    display:flex; align-items:center; justify-content:space-between;
+    gap:16px; flex-wrap:wrap;
+  }
+  .site-brand{ display:flex; flex-direction:column; text-decoration:none; line-height:1.25; }
+  .site-brand .name{ color:var(--text); font-size:16px; font-weight:800; letter-spacing:-0.01em; }
+  .site-brand .crumb{ color:var(--text-dim); font-size:12px; font-weight:600; }
+  .site-nav{ display:flex; gap:20px; flex-wrap:wrap; }
+  .site-nav a{ color:var(--text-dim); font-size:13px; font-weight:700; text-decoration:none; transition:color .15s ease; }
+  .site-nav a:hover{ color:var(--text); }
+  .site-nav a.current{ color:var(--amber-light); }
+
+  /* ---------- HERO ---------- */
+  .hero{
+    text-align:center;
+    padding:6px 0 30px;
+    position:relative;
+  }
+  .eyebrow{
+    font-size:12px;
+    font-weight:700;
+    letter-spacing:0.22em;
+    color:var(--teal);
+    text-transform:uppercase;
+    margin-bottom:10px;
+  }
+  h1{
+    font-weight:800;
+    font-size:clamp(32px,6vw,52px);
+    letter-spacing:-0.02em;
+    margin:0;
+    line-height:1.05;
+    color:var(--text);
+  }
+  .subtitle{
+    color:var(--text-dim);
+    font-size:15px;
+    margin-top:10px;
+    font-weight:400;
+  }
+  .asof{
+    font-size:11.5px;
+    font-variant-numeric:tabular-nums;
+    color:var(--text-faint);
+    margin-top:8px;
+    letter-spacing:0.01em;
+  }
+
+  /* ---------- LEAGUE TOGGLE ---------- */
+  /* matches the Conference/Division/League view-switcher pill on poncepuck.net/pphl/standings/ */
+  .league-toggle{
+    display:inline-flex;
+    background:rgba(14,20,36,.85);
+    border:1px solid rgba(35,48,82,.85);
+    border-radius:12px;
+    padding:0;
+    margin-top:20px;
+    overflow:hidden;
+  }
+  .league-btn{
+    font-size:13px;
+    letter-spacing:0.01em;
+    font-weight:700;
+    padding:10px 18px;
+    border:none;
+    background:transparent;
+    color:#CFE1FF;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  .league-btn:hover{ color:var(--text); }
+  .league-btn.active{
+    background:rgba(59,169,255,.18);
+    color:#FFFFFF;
+  }
+
+  /* ---------- CONTROLS ---------- */
+  .controls{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:14px;
+    margin:28px 0 22px;
+    flex-wrap:wrap;
+  }
+  select, .btn{
+    font-family:inherit;
+    font-size:13px;
+    font-weight:600;
+    border-radius:8px;
+    border:1px solid var(--line);
+    background:var(--surface);
+    color:var(--text);
+    padding:10px 16px;
+    cursor:pointer;
+    transition:all .15s ease;
+  }
+  select:hover, .btn:hover{ background:var(--surface-hover); border-color:var(--line-2); }
+  .btn-primary{
+    background:var(--teal);
+    color:#052226;
+    border:none;
+  }
+  .btn-primary:hover{ filter:brightness(1.08); background:var(--teal); }
+  .btn-ghost{
+    background:transparent;
+  }
+  .run-status{
+    font-size:12px;
+    font-variant-numeric:tabular-nums;
+    color:var(--text-faint);
+  }
+
+  /* ---------- TABLE CARD ---------- */
+  .card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    box-shadow:var(--shadow);
+    overflow:hidden;
+    margin-bottom:26px;
+  }
+  .card-head{
+    padding:16px 20px;
+    border-bottom:1px solid var(--line);
+    display:flex;
+    align-items:baseline;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:8px;
+  }
+  .card-title{
+    font-size:16px;
+    letter-spacing:-0.01em;
+    font-weight:700;
+    color:var(--text);
+  }
+  .card-note{
+    font-size:12px;
+    color:var(--text-faint);
+  }
+
+  .table-scroll{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:1260px; }
+  thead th{
+    text-align:left;
+    font-size:10.5px;
+    font-weight:800;
+    letter-spacing:0.08em;
+    text-transform:uppercase;
+    color:var(--text-dim);
+    background:rgba(14,20,36,0.8);
+    padding:10px 10px 10px 14px;
+    border-bottom:1px solid rgba(35,48,82,0.85);
+    white-space:nowrap;
+  }
+  thead tr.group-row th{
+    padding:8px 10px 8px 14px;
+    font-size:10px;
+    font-weight:800;
+    letter-spacing:0.06em;
+    color:var(--teal-light);
+    background:rgba(14,20,36,0.8);
+    border-bottom:none;
+  }
+  thead tr.group-row th.proj-group{ border-left:1px solid rgba(35,48,82,0.85); }
+  tbody td{
+    padding:10px 10px 10px 14px;
+    font-size:13px;
+    color:#FFFFFF;
+    border-bottom:1px solid rgba(35,48,82,0.5);
+    vertical-align:middle;
+  }
+  tbody td.proj-col{ border-left:1px solid rgba(35,48,82,0.5); }
+  tbody tr.team-row{ cursor:pointer; transition:background .12s ease; }
+  tbody tr.team-row:hover{ background:var(--surface-2); }
+  tbody tr.team-row td:first-child{ position:relative; }
+  tbody tr.row-eliminated .team-name{ opacity:0.55; }
+  tbody tr.row-eliminated .rank-num{ opacity:0.55; }
+  .rank-num{ font-variant-numeric:tabular-nums; color:var(--text-dim); font-size:12px; width:16px; flex:0 0 16px; text-align:right; display:inline-block; }
+  .team-cell{ display:flex; align-items:center; gap:10px; }
+  .chip{ width:6px; height:26px; border-radius:3px; flex-shrink:0; }
+  .team-name-wrap{ min-width:0; }
+  .team-name{ font-weight:600; font-size:14px; color:var(--text); white-space:nowrap; }
+  /* plain bold letter markers, matching the (uncolored) x/y/z/p/e legend on poncepuck.net */
+  .badge{
+    font-weight:800;
+    font-size:11.5px;
+    color:#CFE1FF;
+    margin-left:3px;
+    vertical-align:super;
+    line-height:0;
+  }
+  .team-div{ font-size:10px; font-weight:800; letter-spacing:0.06em; text-transform:uppercase; color:var(--teal-light); }
+  .mono{ font-variant-numeric:tabular-nums; }
+  .pct-cell{ min-width:110px; }
+  .team-col{ min-width:230px; }
+  .pct-bar-bg{
+    width:100%; height:7px; border-radius:4px; background:var(--surface-2);
+    overflow:hidden; margin-top:5px;
+  }
+  .pct-bar-fill{ height:100%; border-radius:4px; }
+  .pct-label{ font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:700; }
+
+  /* cutline */
+  tr.cutline-row td{ padding:0; border:none; }
+  .cutline{
+    position:relative;
+    height:0;
+    border-top:2px dashed var(--amber);
+    margin:0 12px;
+    opacity:0.85;
+  }
+  .cutline-label{
+    position:absolute;
+    right:12px;
+    top:-9px;
+    background:rgba(255,209,102,0.12);
+    color:var(--amber);
+    font-size:9.5px;
+    font-weight:700;
+    letter-spacing:0.08em;
+    padding:3px 9px;
+    border-radius:8px;
+    text-transform:uppercase;
+  }
+
+  /* seed sparkline */
+  .seedbars{ display:flex; align-items:flex-end; gap:2px; height:26px; }
+  .seedbar{ width:6px; border-radius:1px 1px 0 0; background:var(--teal); opacity:0.85; }
+
+  /* detail drawer */
+  tr.detail-row{ display:none; }
+  tr.detail-row.open{ display:table-row; }
+  tr.detail-row td{ padding:0; border-bottom:1px solid var(--line); background:var(--bg); }
+  .detail-inner{ padding:20px 24px 26px; display:grid; grid-template-columns:1.1fr 1fr; gap:28px; }
+  @media(max-width:780px){ .detail-inner{ grid-template-columns:1fr; } .detail-inner{padding:16px;} }
+  .detail-col h4{
+    font-size:11px; letter-spacing:0.08em; text-transform:uppercase; font-weight:700;
+    color:var(--text-faint); margin:0 0 12px;
+  }
+  .seed-chart{ display:flex; align-items:flex-end; gap:8px; height:120px; margin-bottom:6px; }
+  .seed-col{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-end; height:100%; }
+  .seed-col .bar{ width:100%; border-radius:4px 4px 0 0; min-height:2px; }
+  .seed-col .val{ font-variant-numeric:tabular-nums; font-size:10px; color:var(--text-dim); margin-bottom:4px; }
+  .seed-col .lbl{ font-variant-numeric:tabular-nums; font-size:10px; color:var(--text-faint); margin-top:6px; }
+  .stat-grid{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:16px; }
+  .stat-box{ background:var(--surface); border:1px solid var(--line); border-radius:8px; padding:10px 12px; }
+  .stat-box .n{ font-size:24px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; }
+  .stat-box .l{ font-size:10.5px; color:var(--text-faint); margin-top:4px; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;}
+  .sched-list{ list-style:none; margin:0; padding:0; max-height:230px; overflow-y:auto; }
+  .sched-list li{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:7px 0; border-bottom:1px solid rgba(27,39,65,0.7); font-size:13px;
+  }
+  .sched-list .d{ color:var(--text-faint); font-variant-numeric:tabular-nums; font-size:11.5px; width:70px; flex-shrink:0; }
+  .sched-list .opp{ flex:1; }
+  .tag-ha{ font-size:10px; font-weight:600; color:var(--text-faint); padding:2px 6px; border:1px solid var(--line); border-radius:4px; }
+
+  /* ---------- WHAT-IF ---------- */
+  .whatif-head{ display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; }
+  .game-groups{ padding:6px 20px 20px; }
+  .date-group{ margin-top:16px; }
+  .date-group h5{
+    font-size:11px; color:var(--text-faint); font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase; margin:0 0 8px;
+    border-bottom:1px solid var(--line); padding-bottom:6px;
+  }
+  .game-row{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:9px 0; border-bottom:1px solid rgba(27,39,65,0.6);
+    flex-wrap:wrap; gap:10px;
+  }
+  .matchup{ display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; min-width:230px; }
+  .matchup .vs{ color:var(--text-faint); font-weight:400; font-size:11px; }
+  .pill-group{ display:flex; gap:5px; flex-wrap:wrap; }
+  .pill{
+    font-size:11px;
+    font-weight:600;
+    padding:6px 9px;
+    border-radius:6px;
+    border:1px solid var(--line);
+    background:var(--surface-2);
+    color:var(--text-dim);
+    cursor:pointer;
+    white-space:nowrap;
+    transition:all .12s ease;
+  }
+  .pill:hover{ border-color:var(--teal); }
+  .pill.active{ background:var(--teal); color:#052226; border-color:var(--teal); font-weight:700; }
+  .pill.active.home-side{ background:var(--amber); color:#241A05; border-color:var(--amber); }
+
+  footer{ margin-top:26px; }
+  footer a{ color:var(--teal-light); }
+  .footer-card{
+    background:var(--surface);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:20px 22px;
+    color:var(--text-dim);
+    font-size:12.5px;
+    line-height:1.7;
+  }
+  .footer-card p{ margin:0 0 12px; }
+  .footer-card p:last-child{ margin-bottom:0; }
+  .footer-card strong{ color:var(--text); font-weight:700; }
+  .footer-legend{
+    display:flex; flex-wrap:wrap; column-gap:20px; row-gap:8px;
+    margin:16px 0; padding:14px 0;
+    border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  }
+  .footer-legend-item{ display:inline-flex; align-items:baseline; gap:6px; font-size:12px; white-space:nowrap; }
+  .footer-legend-item b{ color:#CFE1FF; font-size:12.5px; font-weight:800; }
+
+  ::-webkit-scrollbar{ width:8px; height:8px; }
+  ::-webkit-scrollbar-thumb{ background:var(--line); border-radius:4px; }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="site-header-inner">
+    <a class="site-brand" href="https://poncepuck.net/">
+      <span class="name">PoncePuck</span>
+      <span class="crumb">PPHL Playoff Odds</span>
+    </a>
+    <nav class="site-nav">
+      <a href="https://poncepuck.net/pphl/standings/">Standings</a>
+      <a href="https://poncepuck.net/pphl/schedule/">Schedule</a>
+      <a href="https://poncepuck.net/pphl/teams/">Teams</a>
+      <a href="https://poncepuck.net/pphl/playoffs/">Playoffs</a>
+      <a class="current" href="#">Playoff Odds</a>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <div class="hero">
+    <div class="eyebrow">PPHL · Season 2</div>
+    <h1 id="mainTitle">CHALLENGER CONFERENCE</h1>
+    <div class="subtitle" id="subtitle">Live playoff odds</div>
+    <div class="asof" id="asOf"></div>
+    <div class="league-toggle">
+      <button class="league-btn" id="btnChallenger">Challenger</button>
+      <button class="league-btn" id="btnPremier">Premier</button>
+    </div>
+  </div>
+
+  <div class="controls">
+    <select id="simCount">
+      <option value="5000">5,000 sims (fast)</option>
+      <option value="20000" selected>20,000 sims</option>
+      <option value="50000">50,000 sims (precise)</option>
+    </select>
+    <button class="btn btn-primary" id="runBtn">▶ Run Simulation</button>
+    <button class="btn btn-ghost" id="resetBtn">Reset What-If</button>
+    <span class="run-status" id="runStatus"></span>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <div class="card-title">Playoff Odds</div>
+      <div class="card-note">Click a team to see seed breakdown &amp; remaining schedule</div>
+    </div>
+    <div class="table-scroll">
+    <table>
+      <thead>
+        <tr class="group-row">
+          <th colspan="12"></th>
+          <th colspan="4" class="proj-group">Playoff Projections (Monte Carlo)</th>
+        </tr>
+        <tr>
+          <th class="team-col">Team</th><th>GP</th><th>W</th><th>OTW</th><th>L</th><th>OTL</th><th>PTS</th>
+          <th>P%</th><th>ROW</th><th>GF</th><th>GA</th><th>DIFF</th>
+          <th class="pct-cell proj-col">Playoff %</th><th class="pct-cell">1st Seed %</th>
+          <th id="seedOddsHeader">Seed Odds</th><th>Avg Final Pts</th>
+        </tr>
+      </thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-head whatif-head">
+      <div>
+        <div class="card-title">What If? Simulator</div>
+        <div class="card-note">Lock in results for upcoming games, then hit Run Simulation to see the odds shift</div>
+      </div>
+    </div>
+    <div class="game-groups" id="gameGroups"></div>
+  </div>
+
+  <footer id="footerNote"></footer>
+
+</div>
+
+<script>
+const LEAGUES = {"challenger": {"standings": [{"team": "Orlando Otters", "w": 7, "otw": 2, "otl": 0, "l": 2, "points": 25, "gd": 13, "gf": 26, "ga": 13, "gp": 11, "color": "#2DD4BF", "short": "Orlando"}, {"team": "San Antonio Phantoms", "w": 6, "otw": 1, "otl": 0, "l": 4, "points": 20, "gd": 11, "gf": 23, "ga": 12, "gp": 11, "color": "#9B6BD9", "short": "San Antonio"}, {"team": "Kuskokwim Currents", "w": 5, "otw": 2, "otl": 0, "l": 4, "points": 19, "gd": 6, "gf": 24, "ga": 18, "gp": 11, "color": "#4FC3E8", "short": "Kuskokwim"}, {"team": "Twin Falls Thunderbirds", "w": 5, "otw": 1, "otl": 1, "l": 3, "points": 18, "gd": 7, "gf": 21, "ga": 14, "gp": 10, "color": "#E8622C", "short": "Twin Falls"}, {"team": "Ajax Hockey Club", "w": 5, "otw": 0, "otl": 1, "l": 5, "points": 16, "gd": -5, "gf": 22, "ga": 27, "gp": 11, "color": "#F2994A", "short": "Ajax"}, {"team": "Banff Powder Hounds", "w": 4, "otw": 1, "otl": 2, "l": 4, "points": 16, "gd": -4, "gf": 20, "ga": 24, "gp": 11, "color": "#7DA6C4", "short": "Banff"}, {"team": "Zookie's Cookies", "w": 4, "otw": 1, "otl": 1, "l": 5, "points": 15, "gd": -4, "gf": 22, "ga": 26, "gp": 11, "color": "#D4A24C", "short": "Zookie's"}, {"team": "Atomic City Fission", "w": 3, "otw": 0, "otl": 2, "l": 5, "points": 11, "gd": -7, "gf": 13, "ga": 20, "gp": 10, "color": "#8BC34A", "short": "Atomic City"}, {"team": "Grand Marais Superior", "w": 3, "otw": 0, "otl": 2, "l": 6, "points": 11, "gd": -11, "gf": 16, "ga": 27, "gp": 11, "color": "#3B6FA8", "short": "Grand Marais"}, {"team": "Milwaukee Beer Maidens", "w": 1, "otw": 3, "otl": 2, "l": 5, "points": 11, "gd": -6, "gf": 13, "ga": 19, "gp": 11, "color": "#E3B23C", "short": "Milwaukee"}], "remaining": [{"date": "July 30th", "away": "Orlando Otters", "home": "Ajax Hockey Club"}, {"date": "July 30th", "away": "Orlando Otters", "home": "Ajax Hockey Club"}, {"date": "July 30th", "away": "Banff Powder Hounds", "home": "Atomic City Fission"}, {"date": "July 30th", "away": "Banff Powder Hounds", "home": "Atomic City Fission"}, {"date": "July 30th", "away": "Grand Marais Superior", "home": "Milwaukee Beer Maidens"}, {"date": "July 30th", "away": "Grand Marais Superior", "home": "Milwaukee Beer Maidens"}, {"date": "July 30th", "away": "San Antonio Phantoms", "home": "Twin Falls Thunderbirds"}, {"date": "July 30th", "away": "San Antonio Phantoms", "home": "Twin Falls Thunderbirds"}, {"date": "July 30th", "away": "Zookie's Cookies", "home": "Kuskokwim Currents"}, {"date": "August 1st", "away": "Zookie's Cookies", "home": "Banff Powder Hounds"}, {"date": "August 1st", "away": "Zookie's Cookies", "home": "Banff Powder Hounds"}, {"date": "August 1st", "away": "Grand Marais Superior", "home": "Atomic City Fission"}, {"date": "August 1st", "away": "Grand Marais Superior", "home": "Atomic City Fission"}, {"date": "August 1st", "away": "Kuskokwim Currents", "home": "San Antonio Phantoms"}, {"date": "August 1st", "away": "Kuskokwim Currents", "home": "San Antonio Phantoms"}, {"date": "August 1st", "away": "Ajax Hockey Club", "home": "Twin Falls Thunderbirds"}, {"date": "August 1st", "away": "Ajax Hockey Club", "home": "Twin Falls Thunderbirds"}, {"date": "August 1st", "away": "Milwaukee Beer Maidens", "home": "Orlando Otters"}, {"date": "August 6th", "away": "Twin Falls Thunderbirds", "home": "Banff Powder Hounds"}, {"date": "August 6th", "away": "Twin Falls Thunderbirds", "home": "Banff Powder Hounds"}, {"date": "August 6th", "away": "Atomic City Fission", "home": "Kuskokwim Currents"}, {"date": "August 6th", "away": "Atomic City Fission", "home": "Kuskokwim Currents"}, {"date": "August 6th", "away": "Ajax Hockey Club", "home": "Milwaukee Beer Maidens"}, {"date": "August 6th", "away": "Ajax Hockey Club", "home": "Milwaukee Beer Maidens"}, {"date": "August 6th", "away": "Orlando Otters", "home": "Zookie's Cookies"}, {"date": "August 6th", "away": "Orlando Otters", "home": "Zookie's Cookies"}, {"date": "August 6th", "away": "Grand Marais Superior", "home": "San Antonio Phantoms"}, {"date": "August 8th", "away": "Milwaukee Beer Maidens", "home": "Atomic City Fission"}, {"date": "August 8th", "away": "Milwaukee Beer Maidens", "home": "Atomic City Fission"}, {"date": "August 8th", "away": "Zookie's Cookies", "home": "Grand Marais Superior"}, {"date": "August 8th", "away": "Zookie's Cookies", "home": "Grand Marais Superior"}, {"date": "August 8th", "away": "Twin Falls Thunderbirds", "home": "Kuskokwim Currents"}, {"date": "August 8th", "away": "Twin Falls Thunderbirds", "home": "Kuskokwim Currents"}, {"date": "August 8th", "away": "San Antonio Phantoms", "home": "Orlando Otters"}, {"date": "August 8th", "away": "San Antonio Phantoms", "home": "Orlando Otters"}, {"date": "August 8th", "away": "Ajax Hockey Club", "home": "Banff Powder Hounds"}], "divisions": {"Interior": ["Kuskokwim Currents", "Twin Falls Thunderbirds", "Ajax Hockey Club", "Zookie's Cookies", "Grand Marais Superior"], "Coastal": ["Orlando Otters", "San Antonio Phantoms", "Banff Powder Hounds", "Atomic City Fission", "Milwaukee Beer Maidens"]}, "colors": {"Orlando Otters": "#2DD4BF", "Zookie's Cookies": "#D4A24C", "Banff Powder Hounds": "#7DA6C4", "San Antonio Phantoms": "#9B6BD9", "Twin Falls Thunderbirds": "#E8622C", "Grand Marais Superior": "#3B6FA8", "Ajax Hockey Club": "#F2994A", "Milwaukee Beer Maidens": "#E3B23C", "Kuskokwim Currents": "#4FC3E8", "Atomic City Fission": "#8BC34A"}, "short": {"Orlando Otters": "Orlando", "Zookie's Cookies": "Zookie's", "Banff Powder Hounds": "Banff", "San Antonio Phantoms": "San Antonio", "Twin Falls Thunderbirds": "Twin Falls", "Grand Marais Superior": "Grand Marais", "Ajax Hockey Club": "Ajax", "Milwaukee Beer Maidens": "Milwaukee", "Kuskokwim Currents": "Kuskokwim", "Atomic City Fission": "Atomic City"}, "roster": {"Ajax Hockey Club": {"G": 20.0, "GA": 26.0, "TK": 799.0, "GV": 762.0}, "Grand Marais Superior": {"G": 13.0, "GA": 21.0, "TK": 837.0, "GV": 840.0}, "Kuskokwim Currents": {"G": 27.0, "GA": 18.0, "TK": 794.0, "GV": 915.0}, "Twin Falls Thunderbirds": {"G": 21.0, "GA": 13.0, "TK": 833.0, "GV": 808.0}, "Zookie's Cookies": {"G": 21.0, "GA": 24.0, "TK": 880.0, "GV": 906.0}, "Atomic City Fission": {"G": 13.0, "GA": 20.0, "TK": 798.0, "GV": 850.0}, "Banff Powder Hounds": {"G": 20.0, "GA": 20.0, "TK": 831.0, "GV": 765.0}, "Milwaukee Beer Maidens": {"G": 12.0, "GA": 15.0, "TK": 836.0, "GV": 808.0}, "Orlando Otters": {"G": 25.0, "GA": 13.0, "TK": 937.0, "GV": 886.0}, "San Antonio Phantoms": {"G": 23.0, "GA": 12.0, "TK": 854.0, "GV": 854.0}}, "otRate": 0.2037037037037037, "asOf": "Standings and schedule through games of July 25th (per this mastersheet export)", "playoffSpots": 8, "totalTeams": 10}, "premier": {"standings": [{"team": "Boston Bullets", "w": 9, "otw": 0, "otl": 0, "l": 3, "points": 27, "gd": 17, "gf": 36, "ga": 19, "gp": 12, "color": "#C0392B", "short": "Boston"}, {"team": "Burning River Hitmen", "w": 6, "otw": 2, "otl": 1, "l": 3, "points": 23, "gd": 1, "gf": 20, "ga": 19, "gp": 12, "color": "#E74C3C", "short": "Burning River"}, {"team": "Spirit Of St. Louis", "w": 6, "otw": 1, "otl": 0, "l": 5, "points": 20, "gd": 6, "gf": 19, "ga": 13, "gp": 12, "color": "#3B82C4", "short": "Spirit STL"}, {"team": "Buffalo Forge", "w": 6, "otw": 0, "otl": 2, "l": 4, "points": 20, "gd": 4, "gf": 22, "ga": 18, "gp": 12, "color": "#F4B942", "short": "Buffalo"}, {"team": "Utah Uncs", "w": 5, "otw": 1, "otl": 0, "l": 6, "points": 17, "gd": -1, "gf": 18, "ga": 19, "gp": 12, "color": "#B23A48", "short": "Utah"}, {"team": "Montauk Mariners", "w": 0, "otw": 0, "otl": 1, "l": 11, "points": 1, "gd": -27, "gf": 15, "ga": 42, "gp": 12, "color": "#5C8AA6", "short": "Montauk"}], "remaining": [{"date": "July 31st", "away": "Montauk Mariners", "home": "Spirit Of St. Louis"}, {"date": "July 31st", "away": "Montauk Mariners", "home": "Spirit Of St. Louis"}, {"date": "July 31st", "away": "Buffalo Forge", "home": "Utah Uncs"}, {"date": "July 31st", "away": "Buffalo Forge", "home": "Utah Uncs"}, {"date": "July 31st", "away": "Burning River Hitmen", "home": "Boston Bullets"}, {"date": "July 31st", "away": "Burning River Hitmen", "home": "Boston Bullets"}, {"date": "August 2nd", "away": "Utah Uncs", "home": "Boston Bullets"}, {"date": "August 2nd", "away": "Utah Uncs", "home": "Boston Bullets"}, {"date": "August 2nd", "away": "Spirit Of St. Louis", "home": "Burning River Hitmen"}, {"date": "August 2nd", "away": "Spirit Of St. Louis", "home": "Burning River Hitmen"}, {"date": "August 2nd", "away": "Buffalo Forge", "home": "Montauk Mariners"}, {"date": "August 2nd", "away": "Buffalo Forge", "home": "Montauk Mariners"}, {"date": "August 7th", "away": "Burning River Hitmen", "home": "Buffalo Forge"}, {"date": "August 7th", "away": "Burning River Hitmen", "home": "Buffalo Forge"}, {"date": "August 7th", "away": "Montauk Mariners", "home": "Utah Uncs"}, {"date": "August 7th", "away": "Montauk Mariners", "home": "Utah Uncs"}, {"date": "August 7th", "away": "Boston Bullets", "home": "Spirit Of St. Louis"}, {"date": "August 7th", "away": "Boston Bullets", "home": "Spirit Of St. Louis"}, {"date": "August 9th", "away": "Montauk Mariners", "home": "Burning River Hitmen"}, {"date": "August 9th", "away": "Montauk Mariners", "home": "Burning River Hitmen"}, {"date": "August 9th", "away": "Buffalo Forge", "home": "Boston Bullets"}, {"date": "August 9th", "away": "Buffalo Forge", "home": "Boston Bullets"}, {"date": "August 9th", "away": "Spirit Of St. Louis", "home": "Utah Uncs"}, {"date": "August 9th", "away": "Spirit Of St. Louis", "home": "Utah Uncs"}], "divisions": null, "colors": {"Boston Bullets": "#C0392B", "Burning River Hitmen": "#E74C3C", "Spirit Of St. Louis": "#3B82C4", "Buffalo Forge": "#F4B942", "Utah Uncs": "#B23A48", "Montauk Mariners": "#5C8AA6"}, "short": {"Boston Bullets": "Boston", "Burning River Hitmen": "Burning River", "Spirit Of St. Louis": "Spirit STL", "Buffalo Forge": "Buffalo", "Utah Uncs": "Utah", "Montauk Mariners": "Montauk"}, "roster": {"Boston Bullets": {"G": 36.0, "GA": 19.0, "TK": 966.0, "GV": 949.0}, "Montauk Mariners": {"G": 12.0, "GA": 42.0, "TK": 845.0, "GV": 831.0}, "Burning River Hitmen": {"G": 18.0, "GA": 18.0, "TK": 901.0, "GV": 874.0}, "Buffalo Forge": {"G": 22.0, "GA": 18.0, "TK": 1012.0, "GV": 1038.0}, "Utah Uncs": {"G": 17.0, "GA": 19.0, "TK": 1014.0, "GV": 1018.0}, "Spirit Of St. Louis": {"G": 19.0, "GA": 13.0, "TK": 1050.0, "GV": 1085.0}}, "otRate": 0.1111111111111111, "asOf": "Standings and schedule through games of July 26th (per this mastersheet export)", "playoffSpots": 4, "totalTeams": 6}};
+
+// stable per-game ids, done once
+Object.values(LEAGUES).forEach(lg => {
+  lg.remaining = lg.remaining.map((g,i) => ({...g, id:'g'+i}));
+});
+
+let currentKey = 'challenger';
+const overridesByLeague = { challenger:{}, premier:{} };
+const openTeamByLeague = { challenger:null, premier:null };
+const resultsByLeague = { challenger:null, premier:null };
+
+function league(){ return LEAGUES[currentKey]; }
+function teams(){ return league().standings; }
+function remaining(){ return league().remaining; }
+function overrides(){ return overridesByLeague[currentKey]; }
+
+function divisionOf(){
+  const map = {};
+  const divs = league().divisions;
+  if(divs) Object.entries(divs).forEach(([d,list]) => list.forEach(t => map[t]=d));
+  return map;
+}
+function teamByName(){
+  const map = {};
+  teams().forEach(t => map[t.team]=t);
+  return map;
+}
+
+function mean(arr){ return arr.reduce((a,b)=>a+b,0)/arr.length; }
+function stdev(arr){ const m=mean(arr); return Math.sqrt(mean(arr.map(x=>(x-m)*(x-m)))) || 1; }
+
+// Blend three signals into one rating per team:
+//  1) standings points-per-game (actual results so far)
+//  2) roster-derived goal differential per game (team goals scored by skaters vs
+//     goals allowed by goalies, from the player stat sheet) - a steadier read on
+//     underlying performance than win/loss record alone
+//  3) puck-possession rate (takeaways minus giveaways per game) as a minor factor
+// Each is z-scored across the league's teams, blended, then mapped back onto the
+// PPG scale so the win-probability curve below doesn't need retuning.
+function ratings(lg){
+  const ppg = {}, rosterGD = {}, poss = {};
+  lg.standings.forEach(t => {
+    ppg[t.team] = t.points / t.gp;
+    const rst = lg.roster[t.team];
+    const off = rst.G / t.gp;
+    const def = rst.GA / t.gp;
+    rosterGD[t.team] = off - def;
+    poss[t.team] = (rst.TK - rst.GV) / t.gp;
+  });
+  const names = lg.standings.map(t=>t.team);
+  const ppgVals = names.map(n=>ppg[n]);
+  const gdVals = names.map(n=>rosterGD[n]);
+  const possVals = names.map(n=>poss[n]);
+  const mPpg=mean(ppgVals), sPpg=stdev(ppgVals);
+  const mGd=mean(gdVals), sGd=stdev(gdVals);
+  const mPoss=mean(possVals), sPoss=stdev(possVals);
+
+  const r = {};
+  names.forEach(n => {
+    const zPpg = (ppg[n]-mPpg)/sPpg;
+    const zGd = (rosterGD[n]-mGd)/sGd;
+    const zPoss = (poss[n]-mPoss)/sPoss;
+    const blendZ = 0.45*zPpg + 0.40*zGd + 0.15*zPoss;
+    r[n] = mPpg + blendZ*sPpg;
+  });
+  return r;
+}
+
+const K = 0.6;
+function winProbHome(RATE, home, away){
+  // No home-ice adjustment - rating differential only.
+  const diff = (RATE[home]-RATE[away]);
+  return 1/(1+Math.exp(-diff/K));
+}
+
+function simulateOnce(lg, RATE, ov){
+  const state = {};
+  lg.standings.forEach(t => { state[t.team] = { points:t.points, w:t.w, otw:t.otw, otl:t.otl, l:t.l, gd:t.gd }; });
+
+  for(const g of lg.remaining){
+    const o = ov[g.id];
+    let winner, loser, isOT;
+    if(o){
+      isOT = o.endsWith('ot');
+      if(o.startsWith('home')){ winner=g.home; loser=g.away; }
+      else { winner=g.away; loser=g.home; }
+    } else {
+      const pHome = winProbHome(RATE, g.home, g.away);
+      const homeWins = Math.random() < pHome;
+      winner = homeWins ? g.home : g.away;
+      loser = homeWins ? g.away : g.home;
+      isOT = Math.random() < lg.otRate;
+    }
+    if(isOT){
+      state[winner].points += 2; state[winner].otw += 1;
+      state[loser].points += 1; state[loser].otl += 1;
+    } else {
+      state[winner].points += 3; state[winner].w += 1;
+      state[loser].l += 1;
+    }
+  }
+
+  const arr = lg.standings.map(t => ({ team:t.team, ...state[t.team] }));
+  arr.sort((a,b) => {
+    if(b.points !== a.points) return b.points - a.points;
+    const aRW=a.w, bRW=b.w;
+    if(bRW!==aRW) return bRW-aRW;
+    const aRO=a.w+a.otw, bRO=b.w+b.otw;
+    if(bRO!==aRO) return bRO-aRO;
+    return b.gd - a.gd;
+  });
+  return arr;
+}
+
+function runSimulation(){
+  const lg = league();
+  const ov = overrides();
+  const RATE = ratings(lg);
+  const N = parseInt(document.getElementById('simCount').value, 10);
+  const t0 = performance.now();
+  const T = lg.totalTeams;
+
+  const seedCount = {}; const ptsSum = {};
+  lg.standings.forEach(t => { seedCount[t.team] = new Array(T+1).fill(0); ptsSum[t.team]=0; });
+
+  for(let i=0;i<N;i++){
+    const arr = simulateOnce(lg, RATE, ov);
+    arr.forEach((r, idx) => {
+      const seed = idx+1;
+      seedCount[r.team][seed]++;
+      ptsSum[r.team]+=r.points;
+    });
+  }
+
+  const out = {};
+  lg.standings.forEach(t => {
+    const seeds = seedCount[t.team];
+    const playoffPct = seeds.slice(1,lg.playoffSpots+1).reduce((a,b)=>a+b,0)/N;
+    const firstPct = seeds[1]/N;
+    out[t.team] = {
+      seedPct: seeds.map(x=>x/N),
+      playoffPct, firstPct,
+      avgPts: ptsSum[t.team]/N
+    };
+  });
+
+  const dt = (performance.now()-t0).toFixed(0);
+  document.getElementById('runStatus').textContent = `Ran ${N.toLocaleString()} simulations in ${dt}ms`;
+  resultsByLeague[currentKey] = out;
+  render();
+}
+
+function pctColor(p){
+  if(p>=0.999) return '#6FCF97';
+  if(p>=0.7) return '#3FC1C9';
+  if(p>=0.3) return '#E8B84B';
+  return '#C0546B';
+}
+
+function renderSeedBars(seedPct, T, playoffSpots){
+  let html = '<div class="seedbars">';
+  for(let s=1;s<=T;s++){
+    const p = seedPct ? seedPct[s] : 0;
+    const h = Math.max(2, Math.round(p*26));
+    const color = s<=playoffSpots ? 'var(--teal)' : 'var(--red)';
+    html += `<div class="seedbar" style="height:${h}px;background:${color}" title="Seed ${s}: ${(p*100).toFixed(1)}%"></div>`;
+  }
+  html += '</div>';
+  return html;
+}
+
+// ---------- Mathematical clinch / elimination engine ----------
+// For the CURRENT league, computes for each team:
+//   effPoints    -> points already locked in (current + any What-If-locked games)
+//   uncertain    -> # of remaining games with no locked outcome
+//   gamesLeftAll -> total remaining games (locked + uncertain)
+//   floor        -> worst-case final points (lose every uncertain game)
+//   ceiling      -> best-case final points (win every uncertain game in regulation)
+function computeFloorCeiling(lg, ov){
+  const effPoints = {}, uncertain = {}, gamesLeftAll = {};
+  lg.standings.forEach(t => { effPoints[t.team]=t.points; uncertain[t.team]=0; gamesLeftAll[t.team]=0; });
+  lg.remaining.forEach(g => {
+    gamesLeftAll[g.home]+=1; gamesLeftAll[g.away]+=1;
+    const o = ov[g.id];
+    if(o){
+      const isOT = o.endsWith('ot');
+      const winner = o.startsWith('home') ? g.home : g.away;
+      const loser = o.startsWith('home') ? g.away : g.home;
+      if(isOT){ effPoints[winner]+=2; effPoints[loser]+=1; }
+      else { effPoints[winner]+=3; }
+    } else {
+      uncertain[g.home]+=1; uncertain[g.away]+=1;
+    }
+  });
+  const floor={}, ceiling={}, finalGP={};
+  lg.standings.forEach(t => {
+    floor[t.team] = effPoints[t.team];
+    ceiling[t.team] = effPoints[t.team] + 3*uncertain[t.team];
+    finalGP[t.team] = t.gp + gamesLeftAll[t.team];
+  });
+  return { floor, ceiling, finalGP };
+}
+
+// x = clinched playoff spot, z = clinched #1 seed in own division/league,
+// y = clinched best record within own sub-conference (Challenger only),
+// e = mathematically eliminated from playoff contention.
+function computeClinchBadges(){
+  const lg = league();
+  const ov = overrides();
+  const { floor, ceiling } = computeFloorCeiling(lg, ov);
+  const names = lg.standings.map(t=>t.team);
+  const divs = lg.divisions;
+  const divOf = divisionOf();
+
+  const badges = {};
+  names.forEach(n => badges[n] = { x:false, y:false, z:false, e:false });
+
+  names.forEach(n => {
+    const rivals = names.filter(o => o!==n);
+
+    const couldPassCount = rivals.filter(o => ceiling[o] > floor[n]).length;
+    badges[n].x = couldPassCount < lg.playoffSpots;
+
+    const couldTieOrPassCount = rivals.filter(o => ceiling[o] >= floor[n]).length;
+    badges[n].z = couldTieOrPassCount === 0;
+
+    const alreadyBeatsMax = rivals.filter(o => floor[o] >= ceiling[n]).length;
+    badges[n].e = alreadyBeatsMax >= lg.playoffSpots;
+
+    if(divs){
+      const mates = names.filter(o => o!==n && divOf[o]===divOf[n]);
+      const mateCouldTieOrPass = mates.filter(o => ceiling[o] >= floor[n]).length;
+      badges[n].y = mates.length>0 && mateCouldTieOrPass === 0;
+    }
+  });
+  return badges;
+}
+
+// Presidents' Trophy: best OVERALL record across BOTH Premier and Challenger,
+// compared fairly via points percentage (points / (final games played * 3))
+// since the two leagues don't play the same number of games.
+function computePresidentsTrophy(){
+  const entries = [];
+  Object.entries(LEAGUES).forEach(([key, lg]) => {
+    const ov = overridesByLeague[key];
+    const { floor, ceiling, finalGP } = computeFloorCeiling(lg, ov);
+    lg.standings.forEach(t => {
+      entries.push({
+        key, team: t.team,
+        floorPct: floor[t.team]/(finalGP[t.team]*3),
+        ceilPct: ceiling[t.team]/(finalGP[t.team]*3)
+      });
+    });
+  });
+  const winner = {};
+  entries.forEach(e => {
+    const rivals = entries.filter(o => !(o.key===e.key && o.team===e.team));
+    const couldTieOrPass = rivals.filter(o => o.ceilPct >= e.floorPct).length;
+    if(couldTieOrPass === 0) winner[e.key+'|'+e.team] = true;
+  });
+  return winner; // map of "leagueKey|TeamName" -> true
+}
+
+let openTeam = null;
+
+function render(){
+  const lg = league();
+  const tbody = document.getElementById('tableBody');
+  const sorted = [...lg.standings].sort((a,b)=> b.points-a.points || b.gd-a.gd);
+  const results = resultsByLeague[currentKey];
+  const badges = computeClinchBadges();
+  const trophy = computePresidentsTrophy();
+  const divOf = divisionOf();
+  openTeam = openTeamByLeague[currentKey];
+
+  document.getElementById('seedOddsHeader').textContent = `Seed Odds (1–${lg.totalTeams})`;
+
+  let rows = '';
+  sorted.forEach((t, i) => {
+    const rank = i+1;
+    const rec = results ? results[t.team] : null;
+    const playoffPct = rec ? rec.playoffPct : 0;
+    const firstPct = rec ? rec.firstPct : 0;
+    const avgPts = rec ? rec.avgPts.toFixed(1) : '—';
+    const div = divOf[t.team];
+    const b = badges[t.team];
+    const hasTrophy = !!trophy[currentKey+'|'+t.team];
+
+    let badgeHtml = '';
+    if(b.x) badgeHtml += `<span class="badge badge-x" title="Clinched playoff spot">x</span>`;
+    if(b.y) badgeHtml += `<span class="badge badge-y" title="Clinched best record in own conference (Interior/Coastal)">y</span>`;
+    if(b.z) badgeHtml += `<span class="badge badge-z" title="Clinched #1 overall seed">z</span>`;
+    if(hasTrophy) badgeHtml += `<span class="badge badge-p" title="Clinched Presidents' Trophy — best record in the PPHL">p</span>`;
+    if(b.e) badgeHtml += `<span class="badge badge-e" title="Mathematically eliminated from playoff contention">e</span>`;
+
+    const pPct = (t.points/(t.gp*3)).toFixed(3);
+    const rowStat = t.w + t.otw;
+    const diffStr = t.gd > 0 ? `+${t.gd}` : `${t.gd}`;
+
+    rows += `<tr class="team-row ${b.e?'row-eliminated':''}" data-team="${t.team}">
+      <td>
+        <div class="team-cell">
+          <span class="rank-num">${rank}</span>
+          <div class="chip" style="background:${t.color}"></div>
+          <div class="team-name-wrap">
+            <div class="team-name">${t.team}${badgeHtml}</div>
+            <div class="team-div">${div ? div+' Conference' : (lg.name || '')}</div>
+          </div>
+        </div>
+      </td>
+      <td class="mono">${t.gp}</td>
+      <td class="mono">${t.w}</td>
+      <td class="mono">${t.otw}</td>
+      <td class="mono">${t.l}</td>
+      <td class="mono">${t.otl}</td>
+      <td class="mono" style="font-weight:700">${t.points}</td>
+      <td class="mono">${pPct}</td>
+      <td class="mono">${rowStat}</td>
+      <td class="mono">${t.gf}</td>
+      <td class="mono">${t.ga}</td>
+      <td class="mono">${diffStr}</td>
+      <td class="pct-cell proj-col">
+        <div class="pct-label" style="color:${pctColor(playoffPct)}">${(playoffPct*100).toFixed(1)}%</div>
+        <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${(playoffPct*100).toFixed(1)}%;background:${pctColor(playoffPct)}"></div></div>
+      </td>
+      <td class="pct-cell">
+        <div class="pct-label" style="color:var(--text-dim)">${(firstPct*100).toFixed(1)}%</div>
+        <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${(firstPct*100).toFixed(1)}%;background:var(--text-dim)"></div></div>
+      </td>
+      <td>${renderSeedBars(rec ? rec.seedPct : null, lg.totalTeams, lg.playoffSpots)}</td>
+      <td class="mono">${avgPts}</td>
+    </tr>`;
+
+    rows += `<tr class="detail-row ${openTeam===t.team?'open':''}" data-detail="${t.team}"><td colspan="16">${renderDetail(t, rec)}</td></tr>`;
+
+    if(rank===lg.playoffSpots){
+      rows += `<tr class="cutline-row"><td colspan="16"><div class="cutline"><div class="cutline-label">Playoff Line</div></div></td></tr>`;
+    }
+  });
+  tbody.innerHTML = rows;
+
+  document.querySelectorAll('.team-row').forEach(row => {
+    row.addEventListener('click', () => {
+      const team = row.getAttribute('data-team');
+      openTeamByLeague[currentKey] = (openTeam===team) ? null : team;
+      render();
+    });
+  });
+}
+
+function renderDetail(t, rec){
+  const lg = league();
+  const T = lg.totalTeams;
+  const seedPct = rec ? rec.seedPct : new Array(T+1).fill(0);
+  let seedChart = '<div class="seed-chart">';
+  for(let s=1;s<=T;s++){
+    const p = seedPct[s];
+    const h = Math.max(2, Math.round(p*100));
+    const color = s<=lg.playoffSpots ? 'linear-gradient(180deg,#4FD8DE,#3FC1C9)' : 'linear-gradient(180deg,#D9788E,#C0546B)';
+    seedChart += `<div class="seed-col">
+      <div class="val">${(p*100).toFixed(0)}%</div>
+      <div class="bar" style="height:${h}%;background:${color}"></div>
+      <div class="lbl">${s}</div>
+    </div>`;
+  }
+  seedChart += '</div>';
+
+  const ov = overrides();
+  const teamGames = lg.remaining.filter(g => g.home===t.team || g.away===t.team);
+  let schedItems = '';
+  teamGames.forEach(g => {
+    const isHome = g.home===t.team;
+    const opp = isHome ? g.away : g.home;
+    const o = ov[g.id];
+    let ovTag = '';
+    if(o) ovTag = ` <span style="color:var(--amber)">(locked)</span>`;
+    schedItems += `<li><span class="d">${g.date}</span><span class="opp">${isHome?'vs':'@'} ${opp}${ovTag}</span><span class="tag-ha">${isHome?'HOME':'AWAY'}</span></li>`;
+  });
+  if(teamGames.length===0) schedItems = '<li><span class="opp" style="color:var(--text-faint)">No games remaining in the loaded schedule</span></li>';
+
+  const playoffPct = rec ? (rec.playoffPct*100).toFixed(1) : '—';
+  const missPct = rec ? (100-rec.playoffPct*100).toFixed(1) : '—';
+  const avgPts = rec ? rec.avgPts.toFixed(1) : '—';
+  const gamesLeft = teamGames.length;
+
+  return `<div class="detail-inner">
+    <div class="detail-col">
+      <h4>Seed Probability</h4>
+      ${seedChart}
+      <div class="stat-grid">
+        <div class="stat-box"><div class="n" style="color:${pctColor(rec?rec.playoffPct:0)}">${playoffPct}%</div><div class="l">Make Playoffs</div></div>
+        <div class="stat-box"><div class="n" style="color:var(--red)">${missPct}%</div><div class="l">Miss Playoffs</div></div>
+        <div class="stat-box"><div class="n">${avgPts}</div><div class="l">Avg Final Points</div></div>
+        <div class="stat-box"><div class="n">${gamesLeft}</div><div class="l">Games Remaining</div></div>
+      </div>
+    </div>
+    <div class="detail-col">
+      <h4>Remaining Schedule</h4>
+      <ul class="sched-list">${schedItems}</ul>
+    </div>
+  </div>`;
+}
+
+function renderGameGroups(){
+  const lg = league();
+  const ov = overrides();
+  const tbn = teamByName();
+  const byDate = {};
+  lg.remaining.forEach(g => { (byDate[g.date] = byDate[g.date]||[]).push(g); });
+
+  let html = '';
+  Object.entries(byDate).forEach(([date, games]) => {
+    html += `<div class="date-group"><h5>${date}</h5>`;
+    games.forEach(g => {
+      const o = ov[g.id] || '';
+      html += `<div class="game-row">
+        <div class="matchup">
+          <span style="color:${tbn[g.away].color}">${lg.short[g.away]}</span>
+          <span class="vs">@</span>
+          <span style="color:${tbn[g.home].color}">${lg.short[g.home]}</span>
+        </div>
+        <div class="pill-group" data-gid="${g.id}">
+          <div class="pill ${o===''?'active':''}" data-val="">Auto</div>
+          <div class="pill ${o==='away_reg'?'active':''}" data-val="away_reg">${lg.short[g.away]} Reg</div>
+          <div class="pill ${o==='away_ot'?'active':''}" data-val="away_ot">${lg.short[g.away]} OT</div>
+          <div class="pill ${o==='home_ot'?'active home-side':''}" data-val="home_ot">${lg.short[g.home]} OT</div>
+          <div class="pill ${o==='home_reg'?'active home-side':''}" data-val="home_reg">${lg.short[g.home]} Reg</div>
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+  document.getElementById('gameGroups').innerHTML = html;
+
+  document.querySelectorAll('.pill-group').forEach(group => {
+    const gid = group.getAttribute('data-gid');
+    group.querySelectorAll('.pill').forEach(pill => {
+      pill.addEventListener('click', () => {
+        const val = pill.getAttribute('data-val');
+        if(val==='') delete overrides()[gid]; else overrides()[gid] = val;
+        renderGameGroups();
+      });
+    });
+  });
+}
+
+function updateHero(){
+  const lg = league();
+  document.getElementById('mainTitle').textContent = currentKey==='challenger' ? 'CHALLENGER CONFERENCE' : 'PREMIER DIVISION';
+  document.getElementById('subtitle').textContent = `Live playoff odds — ${lg.totalTeams} teams, top ${lg.playoffSpots} qualify, seeded 1–${lg.playoffSpots} overall`;
+  document.getElementById('asOf').textContent = lg.asOf;
+  document.getElementById('btnChallenger').classList.toggle('active', currentKey==='challenger');
+  document.getElementById('btnPremier').classList.toggle('active', currentKey==='premier');
+}
+
+function updateFooter(){
+  document.getElementById('footerNote').innerHTML = `
+    <div class="footer-card">
+      <p><strong>Model:</strong> team ratings of the factors: current standings points-per-game (45%), roster-derived goal differential per game from individual player stats i.e. skater goals scored vs. goalie goals allowed (40%), team puck-possession rate and takeaways minus giveaways (15%). These factors blended into a logistic win-probability function; OT/SO rate is modeled per conference based on this season's rate so far.</p>
+      <p><strong>Tiebreakers:</strong> points &rarr; regulation wins &rarr; regulation+OT wins &rarr; goal differential (head-to-head approximated by goal differential for simulation performance).</p>
+      <div class="footer-legend">
+        <span class="footer-legend-item"><b>x</b> Clinched playoff spot</span>
+        <span class="footer-legend-item"><b>y</b> Clinched best record in conference</span>
+        <span class="footer-legend-item"><b>z</b> Clinched #1 overall seed</span>
+        <span class="footer-legend-item"><b>p</b> Presidents' Trophy</span>
+        <span class="footer-legend-item"><b>e</b> Mathematically eliminated</span>
+      </div>
+    </div>
+  `;
+}
+
+function switchLeague(key){
+  if(currentKey===key) return;
+  currentKey = key;
+  updateHero();
+  updateFooter();
+  renderGameGroups();
+  render();
+  runSimulation();
+}
+
+document.getElementById('runBtn').addEventListener('click', runSimulation);
+document.getElementById('resetBtn').addEventListener('click', () => {
+  Object.keys(overrides()).forEach(k => delete overrides()[k]);
+  renderGameGroups();
+  runSimulation();
+});
+document.getElementById('btnChallenger').addEventListener('click', () => switchLeague('challenger'));
+document.getElementById('btnPremier').addEventListener('click', () => switchLeague('premier'));
+
+updateHero();
+updateFooter();
+renderGameGroups();
+render();
+runSimulation();
+</script>
+</body>
+</html>

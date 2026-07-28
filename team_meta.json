@@ -1,0 +1,49 @@
+{
+  "_readme": "Edit this file, not the Python script, when a team's brand color/short name changes or a new team is added. Anything the script can figure out from the mastersheet (standings, schedule, divisions, roster totals) is NOT stored here on purpose, so this file stays small and rarely needs touching.",
+  "challenger": {
+    "playoffSpots": 8,
+    "colors": {
+      "Orlando Otters": "#2DD4BF",
+      "Zookie's Cookies": "#D4A24C",
+      "Banff Powder Hounds": "#7DA6C4",
+      "San Antonio Phantoms": "#9B6BD9",
+      "Twin Falls Thunderbirds": "#E8622C",
+      "Grand Marais Superior": "#3B6FA8",
+      "Ajax Hockey Club": "#F2994A",
+      "Milwaukee Beer Maidens": "#E3B23C",
+      "Kuskokwim Currents": "#4FC3E8",
+      "Atomic City Fission": "#8BC34A"
+    },
+    "short": {
+      "Orlando Otters": "Orlando",
+      "Zookie's Cookies": "Zookie's",
+      "Banff Powder Hounds": "Banff",
+      "San Antonio Phantoms": "San Antonio",
+      "Twin Falls Thunderbirds": "Twin Falls",
+      "Grand Marais Superior": "Grand Marais",
+      "Ajax Hockey Club": "Ajax",
+      "Milwaukee Beer Maidens": "Milwaukee",
+      "Kuskokwim Currents": "Kuskokwim",
+      "Atomic City Fission": "Atomic City"
+    }
+  },
+  "premier": {
+    "playoffSpots": 4,
+    "colors": {
+      "Boston Bullets": "#C0392B",
+      "Burning River Hitmen": "#E74C3C",
+      "Spirit Of St. Louis": "#3B82C4",
+      "Buffalo Forge": "#F4B942",
+      "Utah Uncs": "#B23A48",
+      "Montauk Mariners": "#5C8AA6"
+    },
+    "short": {
+      "Boston Bullets": "Boston",
+      "Burning River Hitmen": "Burning River",
+      "Spirit Of St. Louis": "Spirit STL",
+      "Buffalo Forge": "Buffalo",
+      "Utah Uncs": "Utah",
+      "Montauk Mariners": "Montauk"
+    }
+  }
+}
