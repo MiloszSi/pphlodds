@@ -28,12 +28,12 @@ jobs:
           python generate_pphl_data.py \
             --premier "https://docs.google.com/spreadsheets/d/1mRoiVjKpYc474RWZpE_DCbNM37Lz4ehg6o0YKI9y5aw/edit" \
             --challenger "https://docs.google.com/spreadsheets/d/1ourojOrP-vT8Lolfy_FirqFBGGtMaUrYYbAa6wgUvWg/edit" \
-            --html pphl_playoff_odds_full.html
+            --html index.html
 
       - name: Commit and push if anything changed
         run: |
           git config user.name "pphl-odds-bot"
           git config user.email "actions@github.com"
-          git add pphl_playoff_odds_full.html team_meta.json
+          git add index.html team_meta.json
           git diff --staged --quiet || git commit -m "Auto-update playoff odds data"
           git push
