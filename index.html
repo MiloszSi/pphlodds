@@ -264,19 +264,10 @@
   .pct-bar-fill{ height:100%; border-radius:4px; }
   .pct-label{ font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:700; }
 
-  /* cutline */
-  tr.cutline-row td{ padding:0; border:none; }
-  .cutline{
-    position:relative;
-    height:0;
-    border-top:2px dashed var(--amber);
-    margin:0 12px;
-    opacity:0.85;
-  }
+  /* cutline: label sits above the dashed line, not overlapping it */
+  tr.cutline-row td{ padding:10px 14px 12px; border:none; }
+  .cutline-wrap{ display:flex; flex-direction:column; align-items:flex-start; gap:6px; }
   .cutline-label{
-    position:absolute;
-    left:14px;
-    top:-9px;
     background:rgba(255,209,102,0.12);
     color:var(--amber);
     font-size:9.5px;
@@ -285,6 +276,12 @@
     padding:3px 9px;
     border-radius:8px;
     text-transform:uppercase;
+  }
+  .cutline{
+    width:100%;
+    height:0;
+    border-top:2px dashed var(--amber);
+    opacity:0.85;
   }
 
   /* seed sparkline */
@@ -792,7 +789,7 @@ function render(){
     rows += `<tr class="detail-row ${openTeam===t.team?'open':''}" data-detail="${t.team}"><td colspan="16">${renderDetail(t, rec)}</td></tr>`;
 
     if(rank===lg.playoffSpots){
-      rows += `<tr class="cutline-row"><td colspan="16"><div class="cutline"><div class="cutline-label">Playoff Line</div></div></td></tr>`;
+      rows += `<tr class="cutline-row"><td colspan="16"><div class="cutline-wrap"><div class="cutline-label">Playoff Line</div><div class="cutline"></div></div></td></tr>`;
     }
   });
   tbody.innerHTML = rows;
