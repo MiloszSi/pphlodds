@@ -264,24 +264,23 @@
   .pct-bar-fill{ height:100%; border-radius:4px; }
   .pct-label{ font-variant-numeric:tabular-nums; font-size:12.5px; font-weight:700; }
 
-  /* cutline: label sits above the dashed line, not overlapping it */
-  tr.cutline-row td{ padding:6px 14px; border:none; }
-  .cutline-wrap{ display:flex; flex-direction:column; align-items:flex-start; gap:4px; }
+  /* cutline: the border between the last playoff team and the first team out IS the dashed line */
+  tr.row-cutline td{ border-bottom:2px dashed var(--amber); }
+  .cutline-td{ position:relative; }
   .cutline-label{
-    background:rgba(255,209,102,0.12);
+    position:absolute;
+    right:8px;
+    bottom:-9px;
+    background:var(--bg);
     color:var(--amber);
-    font-size:9.5px;
+    font-size:9px;
     font-weight:700;
-    letter-spacing:0.08em;
-    padding:3px 9px;
+    letter-spacing:0.06em;
+    padding:2px 7px;
     border-radius:8px;
     text-transform:uppercase;
-  }
-  .cutline{
-    width:100%;
-    height:0;
-    border-top:2px dashed var(--amber);
-    opacity:0.85;
+    white-space:nowrap;
+    border:1px solid rgba(255,209,102,0.35);
   }
 
   /* seed sparkline */
@@ -752,7 +751,9 @@ function render(){
     const rowStat = t.w + t.otw;
     const diffStr = t.gd > 0 ? `+${t.gd}` : `${t.gd}`;
 
-    rows += `<tr class="team-row ${b.e?'row-eliminated':''}" data-team="${t.team}">
+    const isCutline = rank===lg.playoffSpots;
+
+    rows += `<tr class="team-row ${b.e?'row-eliminated':''} ${isCutline?'row-cutline':''}" data-team="${t.team}">
       <td>
         <div class="team-cell">
           <span class="rank-num">${rank}</span>
@@ -783,14 +784,10 @@ function render(){
         <div class="pct-bar-bg"><div class="pct-bar-fill" style="width:${(firstPct*100).toFixed(1)}%;background:var(--text-dim)"></div></div>
       </td>
       <td>${renderSeedBars(rec ? rec.seedPct : null, lg.totalTeams, lg.playoffSpots)}</td>
-      <td class="mono">${avgPts}</td>
+      <td class="mono${isCutline ? ' cutline-td' : ''}">${avgPts}${isCutline ? '<span class="cutline-label">Playoff Line</span>' : ''}</td>
     </tr>`;
 
     rows += `<tr class="detail-row ${openTeam===t.team?'open':''}" data-detail="${t.team}"><td colspan="16">${renderDetail(t, rec)}</td></tr>`;
-
-    if(rank===lg.playoffSpots){
-      rows += `<tr class="cutline-row"><td colspan="16"><div class="cutline-wrap"><div class="cutline-label">Playoff Line</div><div class="cutline"></div></div></td></tr>`;
-    }
   });
   tbody.innerHTML = rows;
 
