@@ -661,11 +661,19 @@ function computeFloorCeiling(lg, ov){
 // a team at once, because two rivals who play EACH OTHER can't both win that game --
 // one team's gain is the other's loss. This computes the true maximum number of `pool`
 // teams that could simultaneously finish above `threshold`, given the real schedule:
-// games between two pool teams are treated jointly (brute-forced exactly, since the
-// remaining head-to-head slate between genuine contenders is always small in practice);
-// games against a team outside the pool are "free" wins that don't conflict with
-// anyone else in the pool, so they're just added directly.
-const EXACT_SCHEDULE_GAME_CAP = 10; // 4^10 ~ 1,048,576 branches -- keeps this instant
+// games between two pool teams are treated jointly (brute-forced exactly); games
+// against a team outside the pool are "free" wins that don't conflict with anyone
+// else in the pool, so they're just added directly.
+//
+// The pool's mutual games are split into connected components first (teams whose
+// remaining games never touch each other are fully independent, so their maxima
+// just add together) -- this matters a lot in practice: 8 contenders can easily have
+// 13 shared games between them while still splitting into, say, a 2-team pair and a
+// 6-team cluster, which is a very different (and much cheaper) problem than one
+// blob of 13. Each component is solved with a backtracking search that mutates a
+// shared points array in place rather than cloning state per branch, which is what
+// makes a ~4^11 search tractable in milliseconds instead of seconds.
+const EXACT_SCHEDULE_GAME_CAP = 13; // per connected component, not per pool -- 4^13 ~ 67M branches
 function maxSimultaneousAbove(effPoints, uncertainGames, pool, threshold, tieCounts){
   if(pool.length === 0) return 0;
   const poolSet = new Set(pool);
@@ -685,41 +693,73 @@ function maxSimultaneousAbove(effPoints, uncertainGames, pool, threshold, tieCou
   if(mutualGames.length === 0){
     return pool.filter(p => passes(base[p])).length;
   }
-  if(mutualGames.length > EXACT_SCHEDULE_GAME_CAP){
-    // Too many shared games among contenders to brute-force in real time (only
-    // happens early in a season, when clinch badges wouldn't be lighting up anyway).
-    // Fall back to the conservative independent-ceiling count -- safe because it can
-    // only delay a badge, never show one early.
-    return pool.length;
-  }
 
-  const G = mutualGames.length;
-  const totalCombos = Math.pow(4, G);
-  let best = 0;
-  for(let combo=0; combo<totalCombos; combo++){
-    const pts = Object.assign({}, base);
-    let c = combo;
-    for(let i=0;i<G;i++){
-      const outcome = c % 4; c = (c - outcome)/4;
-      const g = mutualGames[i];
-      if(outcome===0) pts[g.home]+=3;
-      else if(outcome===1){ pts[g.home]+=2; pts[g.away]+=1; }
-      else if(outcome===2){ pts[g.away]+=2; pts[g.home]+=1; }
-      else pts[g.away]+=3;
+  // union-find to split `pool` into connected components by shared games
+  const parent = {};
+  pool.forEach(p => parent[p] = p);
+  function find(x){ while(parent[x]!==x){ parent[x]=parent[parent[x]]; x=parent[x]; } return x; }
+  function union(a,b){ const ra=find(a), rb=find(b); if(ra!==rb) parent[ra]=rb; }
+  mutualGames.forEach(g => union(g.home, g.away));
+  const compTeams = {}, compGames = {};
+  pool.forEach(p => { (compTeams[find(p)] = compTeams[find(p)] || []).push(p); });
+  mutualGames.forEach(g => { const r = find(g.home); (compGames[r] = compGames[r] || []).push(g); });
+
+  let total = 0;
+  Object.keys(compTeams).forEach(root => {
+    const teams = compTeams[root];
+    const games = compGames[root] || [];
+    if(games.length === 0){
+      total += teams.filter(p => passes(base[p])).length;
+      return;
     }
-    let count = 0;
-    for(let i=0;i<pool.length;i++){ if(passes(pts[pool[i]])) count++; }
-    if(count > best) best = count;
-  }
-  return best;
+    if(games.length > EXACT_SCHEDULE_GAME_CAP){
+      // Only happens with a very large tangle of contenders sharing games (early
+      // season). Fall back to this component's conservative count -- safe because
+      // it can only delay a badge, never show one early.
+      total += teams.length;
+      return;
+    }
+    const idx = {}; teams.forEach((t,i) => idx[t]=i);
+    const pts = teams.map(t => base[t]);
+    let best = 0;
+    const G = games.length;
+    const homeIdx = new Array(G), awayIdx = new Array(G);
+    games.forEach((g,i) => { homeIdx[i]=idx[g.home]; awayIdx[i]=idx[g.away]; });
+
+    function rec(gi){
+      if(gi===G){
+        let count=0;
+        for(let i=0;i<pts.length;i++){ if(passes(pts[i])) count++; }
+        if(count>best) best=count;
+        return;
+      }
+      const hi=homeIdx[gi], ai=awayIdx[gi];
+      pts[hi]+=3;            rec(gi+1); pts[hi]-=3;
+      pts[hi]+=2; pts[ai]+=1; rec(gi+1); pts[hi]-=2; pts[ai]-=1;
+      pts[ai]+=2; pts[hi]+=1; rec(gi+1); pts[ai]-=2; pts[hi]-=1;
+      pts[ai]+=3;             rec(gi+1); pts[ai]-=3;
+    }
+    rec(0);
+    total += best;
+  });
+  return total;
 }
 
 // x = clinched playoff spot, z = clinched #1 seed in own division/league,
 // y = clinched best record within own sub-conference (Challenger only),
 // e = mathematically eliminated from playoff contention.
+//
+// render() calls this on every UI interaction, including ones that don't touch
+// standings or What-If picks at all (e.g. expanding a team's detail row) -- the
+// schedule-aware search above is real work, so cache the result and only redo it
+// when the league or the locked-in results actually changed.
+let _clinchCache = { key: null, badges: null };
 function computeClinchBadges(){
   const lg = league();
   const ov = overrides();
+  const cacheKey = currentKey + '|' + JSON.stringify(ov);
+  if(_clinchCache.key === cacheKey) return _clinchCache.badges;
+
   const { floor, ceiling, effPoints, uncertainGames } = computeFloorCeiling(lg, ov);
   const names = lg.standings.map(t=>t.team);
   const divs = lg.divisions;
@@ -751,6 +791,7 @@ function computeClinchBadges(){
       badges[n].y = mates.length>0 && exactMateCount === 0;
     }
   });
+  _clinchCache = { key: cacheKey, badges };
   return badges;
 }
 
